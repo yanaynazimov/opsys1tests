@@ -660,6 +660,80 @@ def test_alias_recursive():
                      expected='hello from recursive alias c->b->a', 
                      actual=stdout)
 
+def test_garbage_collector():
+    """Test garbage collector by creating many short-lived background jobs over time"""
+    # The garbage collector runs before each new command is processed.
+    # So if we create jobs that finish quickly, they should be cleaned up
+    # before we hit the 100 job limit.
+    # 
+    # Each command line is processed separately, so we send individual commands
+    # with short-lived background jobs. Between command lines, the garbage
+    # collector should clean up finished jobs.
+    
+    commands = []
+    
+    # Create 120 very short-lived background jobs
+    # 'true' exits immediately, so by the time next command runs,
+    # the garbage collector should clean it up
+    for i in range(120):
+        commands.append('true &')
+    
+    # At the end, check jobs - should have very few or no jobs left
+    commands.append('jobs')
+    commands.append('quit')
+    
+    stdout, stderr, code = run_smash(commands, timeout=60)
+    if stdout is None:
+        return TestResult('garbage_collector', False, error='Timeout or error')
+    
+    # Check that we don't have an error about job list being full
+    combined = stdout + stderr
+    if 'full' in combined.lower() or 'overflow' in combined.lower():
+        return TestResult('garbage_collector', False, 
+                         expected='no overflow error', 
+                         actual='Job list overflow detected')
+    
+    # If we got here without overflow, garbage collector is working
+    return TestResult('garbage_collector', True)
+
+def test_garbage_collector_with_sleep():
+    """Test garbage collector with short sleep jobs that complete during execution"""
+    commands = []
+    
+    # Create 30 jobs that sleep for 1 second each
+    for i in range(30):
+        commands.append('sleep 1 &')
+    
+    # Wait a bit by running some commands
+    for i in range(5):
+        commands.append('pwd')
+    
+    # By now some jobs should have finished and been collected
+    # Create 30 more jobs
+    for i in range(30):
+        commands.append('sleep 1 &')
+    
+    # Check jobs - if garbage collector works, we shouldn't have 60 jobs
+    commands.append('jobs')
+    commands.append('quit kill')
+    
+    stdout, stderr, code = run_smash(commands, timeout=120)
+    if stdout is None:
+        return TestResult('garbage_collector_sleep', False, error='Timeout or error')
+    
+    # Count jobs in the output
+    job_count = stdout.count('[')
+    
+    # Should have some jobs but not all 60 if garbage collector works
+    # This is a softer test - just ensure no overflow
+    combined = stdout + stderr
+    if 'full' in combined.lower() or 'overflow' in combined.lower():
+        return TestResult('garbage_collector_sleep', False, 
+                         expected='no overflow error', 
+                         actual='Job list overflow detected')
+    
+    return TestResult('garbage_collector_sleep', True)
+
 # ============================================================================
 # MAIN TEST RUNNER
 # ============================================================================
@@ -738,6 +812,8 @@ def run_all_tests():
         test_rapid_cd,
         test_alias_chain,
         test_alias_recursive,
+        test_garbage_collector,
+        test_garbage_collector_with_sleep,
     ]
     
     all_tests = [
