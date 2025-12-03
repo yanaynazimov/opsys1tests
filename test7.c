@@ -179,16 +179,39 @@ int test_chain_with_failing_first() {
     run_smash_commands(commands, 3, output, BUFFER_SIZE);
     
     // Should see error message, and pwd should still show original directory
-    // The second command should NOT execute if && short-circuits
-    // But since we're also running pwd separately, we can check the directory didn't change
-    if (strstr(output, "No such file or directory") != NULL ||
-        strstr(output, "error") != NULL ||
-        strstr(output, pwd) != NULL) {
-        printf("  PASSED: Failure handled correctly\n");
+    // The second command in the chain (pwd after &&) should NOT execute if && short-circuits
+    // Count how many times pwd appears - should be exactly once (from the separate pwd command)
+    
+    // Check for error message first
+    if (strstr(output, "does not exist") == NULL &&
+        strstr(output, "error") == NULL) {
+        printf("  FAILED: Expected error message for nonexistent directory\n");
+        printf("  Output: %s\n", output);
+        free(pwd);
+        return 1;
+    }
+    
+    // Count occurrences of the current directory in output
+    // It should appear exactly once (from the standalone pwd command, not from the chain)
+    int count = 0;
+    char* pos = output;
+    while ((pos = strstr(pos, pwd)) != NULL) {
+        count++;
+        pos++;
+    }
+    
+    if (count == 1) {
+        printf("  PASSED: && short-circuits correctly - pwd in chain was not executed\n");
         free(pwd);
         return 0;
+    } else if (count > 1) {
+        printf("  FAILED: pwd in chain was executed (directory printed %d times, expected 1)\n", count);
+        printf("  Output: %s\n", output);
+        free(pwd);
+        return 1;
     }
-    printf("  NOTE: Behavior depends on implementation\n");
+    
+    printf("  NOTE: Could not verify short-circuit behavior\n");
     free(pwd);
     return 0;  // Don't fail, just note
 }
