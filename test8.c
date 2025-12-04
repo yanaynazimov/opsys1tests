@@ -106,12 +106,13 @@ int test_cd_too_many_args() {
     
     run_smash_commands(commands, 2, output, BUFFER_SIZE);
     
-    // Should see "too many arguments" error
-    if (strstr(output, "too many arguments") != NULL) {
+    // Should see "expected 1 arguments" error
+    if (strstr(output, "expected 1 arguments") != NULL ||
+        strstr(output, "too many arguments") != NULL) {
         printf("  PASSED: Too many arguments error\n");
         return 0;
     }
-    printf("  FAILED: Expected 'too many arguments' error\n");
+    printf("  FAILED: Expected 'expected 1 arguments' error\n");
     printf("  Output: %s\n", output);
     return 1;
 }
@@ -260,7 +261,7 @@ int test_diff_missing_files() {
 }
 
 int test_showpid_extra_args() {
-    printf("Test: showpid with extra arguments (should ignore)\n");
+    printf("Test: showpid with extra arguments (should error)\n");
     char output[BUFFER_SIZE];
     
     const char* commands[] = {
@@ -270,18 +271,19 @@ int test_showpid_extra_args() {
     
     run_smash_commands(commands, 2, output, BUFFER_SIZE);
     
-    // Should still show PID (ignoring extra args)
-    if (strstr(output, "smash pid is") != NULL) {
-        printf("  PASSED: showpid works with extra args\n");
+    // Should show error about expected 0 arguments
+    if (strstr(output, "expected 0 arguments") != NULL ||
+        strstr(output, "error") != NULL) {
+        printf("  PASSED: showpid shows error with extra args\n");
         return 0;
     }
-    printf("  FAILED: showpid should work with extra args\n");
+    printf("  FAILED: showpid should error with extra args\n");
     printf("  Output: %s\n", output);
     return 1;
 }
 
 int test_pwd_extra_args() {
-    printf("Test: pwd with extra arguments (should ignore)\n");
+    printf("Test: pwd with extra arguments (should error)\n");
     char output[BUFFER_SIZE];
     
     const char* commands[] = {
@@ -291,12 +293,13 @@ int test_pwd_extra_args() {
     
     run_smash_commands(commands, 2, output, BUFFER_SIZE);
     
-    // Should still show current directory
-    if (strchr(output, '/') != NULL) {
-        printf("  PASSED: pwd works with extra args\n");
+    // Should show error about expected 0 arguments
+    if (strstr(output, "expected 0 arguments") != NULL ||
+        strstr(output, "error") != NULL) {
+        printf("  PASSED: pwd shows error with extra args\n");
         return 0;
     }
-    printf("  FAILED: pwd should work with extra args\n");
+    printf("  FAILED: pwd should error with extra args\n");
     printf("  Output: %s\n", output);
     return 1;
 }
